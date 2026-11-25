@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="fil">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>HNK TapsiHouse - Order</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --kfc-red: #E4002B; --kfc-dark-red: #B8001F; --kfc-black: #202124;
+    --kfc-white: #FFFFFF; --kfc-grey: #F5F5F5; --kfc-light-grey: #E8E8E8;
+    --kfc-yellow: #FFC72C; --available-green: #27AE60; --unavailable-grey: #999999;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Roboto', system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
+  body { background: var(--kfc-grey); color: var(--kfc-black); padding-bottom: 100px; }
+  
+  header { background: var(--kfc-white); border-bottom: 6px solid var(--kfc-red); position: sticky; top: 0; z-index: 40; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+  .header-top { background: var(--kfc-red); padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; }
+  .logo-area { display: flex; align-items: center; gap: 10px; }
+  .logo-icon { background: var(--kfc-white); color: var(--kfc-red); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 900; font-family: 'Oswald', sans-serif; border: 3px solid var(--kfc-white); }
+  .logo-text { font-family: 'Oswald', sans-serif; font-size: 1.4rem; font-weight: 700; color: var(--kfc-white); letter-spacing: 1px; }
+  .logo-text span { color: var(--kfc-white); font-weight: 400; font-size: 0.9rem; display: block; letter-spacing: 2px; }
+  .admin-login-btn { background: var(--kfc-white); color: var(--kfc-red); border: none; padding: 6px 14px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; cursor: pointer; font-family: 'Oswald', sans-serif; letter-spacing: 1px; }
+  .admin-login-btn:hover { background: #f0f0f0; }
+
+  .marquee-wrapper { overflow: hidden; white-space: nowrap; width: 100%; background: var(--kfc-white); padding: 8px 0; }
+  .marquee-content { display: inline-block; animation: marquee 12s linear infinite; padding-left: 100%; }
+  .marquee-content h1 { display: inline-block; font-family: 'Oswald', sans-serif; font-size: 1.3rem; font-weight: 700; color: var(--kfc-red); letter-spacing: 1px; margin: 0; }
+  .marquee-content p { display: inline-block; font-size: 0.75rem; font-weight: 700; color: var(--kfc-black); margin: 0 0 0 20px; text-transform: uppercase; letter-spacing: 1px; }
+  @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
+
+  .store-info-bar { background: var(--kfc-black); color: var(--kfc-white); padding: 12px 16px; display: flex; flex-direction: column; gap: 6px; font-size: 0.8rem; }
+  .store-info-bar .info-row { display: flex; align-items: center; gap: 8px; }
+  .store-info-bar .info-icon { font-size: 1rem; }
+  .store-info-bar .info-text { font-weight: 500; }
+  .store-info-bar .info-text a { color: var(--kfc-yellow); text-decoration: none; font-weight: 700; }
+  .store-info-bar .info-text a:hover { text-decoration: underline; }
+
+  .container { max-width: 600px; margin: 0 auto; padding: 12px; }
+  .category-nav { display: flex; gap: 8px; overflow-x: auto; padding: 4px 0 12px 0; scrollbar-width: none; }
+  .category-nav::-webkit-scrollbar { display: none; }
+  .cat-pill { flex: 0 0 auto; padding: 10px 18px; border-radius: 4px; background: var(--kfc-white); border: 2px solid var(--kfc-light-grey); font-weight: 700; font-size: 0.85rem; color: var(--kfc-black); cursor: pointer; transition: all 0.2s; white-space: nowrap; font-family: 'Oswald', sans-serif; letter-spacing: 0.5px; text-transform: uppercase; }
+  .cat-pill.active { background: var(--kfc-red); color: var(--kfc-white); border-color: var(--kfc-red); }
+
+  .cat-header { background: var(--kfc-red); color: var(--kfc-white); padding: 12px 16px; margin-top: 20px; font-family: 'Oswald', sans-serif; font-weight: 700; font-size: 1.2rem; letter-spacing: 1px; text-transform: uppercase; border-left: 6px solid var(--kfc-black); }
+  .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+
+  .menu-card { background: var(--kfc-white); border-radius: 8px; padding: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); display: flex; flex-direction: column; justify-content: space-between; text-align: center; transition: transform 0.1s; min-height: 130px; border: 1px solid var(--kfc-light-grey); }
+  .menu-card:active { transform: scale(0.97); }
+  .menu-card h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 4px; color: var(--kfc-black); line-height: 1.2; }
+  .menu-card .price { color: var(--kfc-red); font-weight: 900; font-size: 1.1rem; margin-bottom: 10px; font-family: 'Oswald', sans-serif; }
+  .menu-card .desc { font-size: 0.7rem; color: #888; margin-bottom: 8px; line-height: 1.3; min-height: 2.6em; }
+
+  .add-btn { background: var(--kfc-red); color: var(--kfc-white); border: none; padding: 10px; border-radius: 4px; font-weight: 700; font-size: 0.85rem; cursor: pointer; width: 100%; text-transform: uppercase; font-family: 'Oswald', sans-serif; letter-spacing: 1px; transition: all 0.1s; }
+  .add-btn:active { background: var(--kfc-dark-red); }
+
+  .qty-controls-card { display: flex; align-items: center; justify-content: center; gap: 10px; background: var(--kfc-grey); border-radius: 4px; padding: 4px; }
+  .qty-btn-small { width: 32px; height: 32px; border-radius: 4px; border: none; background: var(--kfc-white); color: var(--kfc-red); font-size: 1.2rem; cursor: pointer; font-weight: 900; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; }
+  .qty-btn-small:active { background: #ddd; }
+  .qty-btn-small.plus { background: var(--kfc-red); color: var(--kfc-white); }
+  .qty-btn-small.delete { background: #ff4757; color: white; font-size: 0.9rem; }
+  .qty-display { font-weight: 900; font-size: 1rem; min-width: 20px; text-align: center; }
+
+  .cart-summary { position: fixed; bottom: 16px; left: 16px; right: 16px; background: var(--kfc-red); padding: 14px 16px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; max-width: 568px; margin: 0 auto; z-index: 50; box-shadow: 0 8px 20px rgba(228,0,43,0.3); }
+  .cart-summary .total-info { display: flex; flex-direction: column; color: var(--kfc-white); }
+  .cart-summary .total-label { font-size: 0.7rem; font-weight: 700; opacity: 0.9; text-transform: uppercase; letter-spacing: 1px; }
+  .cart-summary .total-amount { font-size: 1.3rem; font-weight: 900; font-family: 'Oswald', sans-serif; }
+  .btn-checkout { background: var(--kfc-white); color: var(--kfc-red); border: none; padding: 12px 24px; border-radius: 4px; font-weight: 700; cursor: pointer; font-size: 0.95rem; text-transform: uppercase; font-family: 'Oswald', sans-serif; letter-spacing: 1px; }
+  .btn-checkout:active { background: #f0f0f0; }
+
+  .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; justify-content: center; align-items: flex-end; padding: 0; }
+  @media (min-width: 600px) { .modal { align-items: center; padding: 16px; } }
+  .modal.active { display: flex; }
+  .modal-content { background: var(--kfc-white); border-radius: 12px 12px 0 0; padding: 24px; width: 100%; max-width: 500px; max-height: 85vh; overflow-y: auto; animation: slideUp 0.3s ease; }
+  @media (min-width: 600px) { .modal-content { border-radius: 12px; } }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+  .modal-content h2 { margin-bottom: 20px; color: var(--kfc-red); font-size: 1.4rem; text-align: center; font-weight: 900; font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: 1px; }
+  .form-group { margin-bottom: 20px; }
+  .form-group label { display: block; margin-bottom: 10px; font-weight: 700; font-size: 0.95rem; color: var(--kfc-black); text-transform: uppercase; letter-spacing: 0.5px; }
+  .option-group { display: flex; gap: 10px; }
+  .option-btn { flex: 1; padding: 12px; border: 2px solid var(--kfc-light-grey); border-radius: 4px; background: var(--kfc-white); font-weight: 700; font-size: 0.9rem; color: var(--kfc-black); cursor: pointer; transition: all 0.2s; font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: 0.5px; }
+  .option-btn.active { border-color: var(--kfc-red); background: #FFF0F3; color: var(--kfc-red); }
+  .form-group input { width: 100%; padding: 14px; border: 2px solid var(--kfc-light-grey); border-radius: 4px; font-size: 1rem; font-weight: 500; background: var(--kfc-grey); }
+  .form-group input:focus { border-color: var(--kfc-red); outline: none; background: var(--kfc-white); }
+
+  .order-list { background: var(--kfc-grey); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+  .order-list-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px dashed #ccc; }
+  .order-list-item:last-child { border-bottom: none; }
+  .order-item-details { flex: 1; padding-right: 10px; }
+  .order-item-name { font-weight: 700; font-size: 0.95rem; color: var(--kfc-black); margin-bottom: 2px; }
+  .order-item-price { font-size: 0.8rem; color: #666; font-weight: 500; }
+  .order-item-controls { display: flex; align-items: center; gap: 8px; }
+  .order-total { font-weight: 900; font-size: 1.25rem; text-align: right; color: var(--kfc-red); margin-top: 12px; font-family: 'Oswald', sans-serif; }
+
+  .chat-options { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+  .chat-btn { padding: 16px 8px; border: none; border-radius: 4px; color: white; font-weight: 700; cursor: pointer; font-size: 1rem; width: 100%; text-transform: uppercase; font-family: 'Oswald', sans-serif; letter-spacing: 1px; }
+  .chat-whatsapp { background: #25D366; }
+  .btn-close { background: var(--kfc-light-grey); color: var(--kfc-black); padding: 14px; border: none; border-radius: 4px; width: 100%; margin-top: 16px; cursor: pointer; font-weight: 700; font-size: 1rem; text-transform: uppercase; font-family: 'Oswald', sans-serif; letter-spacing: 1px; }
+  .info-note { background: #FFF8E1; border-left: 4px solid var(--kfc-yellow); padding: 12px; border-radius: 4px; font-size: 0.85rem; margin-bottom: 16px; font-weight: 500; color: #555; }
+  .chat-link-box { background: var(--kfc-grey); padding: 16px; border-radius: 8px; margin-top: 10px; font-size: 0.9rem; text-align: center; }
+  .chat-link-box a { color: #25D366; font-weight: 900; display: block; margin-top: 8px; text-decoration: none; font-size: 1.05rem; }
+
+  .admin-panel { padding: 10px; }
+  .admin-category-title { font-family: 'Oswald', sans-serif; font-size: 1.1rem; color: var(--kfc-red); text-transform: uppercase; letter-spacing: 1px; margin: 20px 0 10px 0; padding-bottom: 6px; border-bottom: 2px solid var(--kfc-red); }
+  .admin-menu-item { background: var(--kfc-white); border-radius: 8px; padding: 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 4px rgba(0,0,0,0.06); border: 1px solid var(--kfc-light-grey); }
+  .admin-menu-info { flex: 1; }
+  .admin-menu-name { font-weight: 700; font-size: 0.9rem; color: var(--kfc-black); }
+  .admin-menu-price { font-size: 0.8rem; color: #666; font-weight: 500; }
+  
+  .toggle-switch { position: relative; width: 50px; height: 26px; cursor: pointer; }
+  .toggle-switch input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--unavailable-grey); transition: 0.3s; border-radius: 26px; }
+  .toggle-slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: white; transition: 0.3s; border-radius: 50%; }
+  .toggle-switch input:checked + .toggle-slider { background-color: var(--available-green); }
+  .toggle-switch input:checked + .toggle-slider:before { transform: translateX(24px); }
+  .toggle-label { font-size: 0.7rem; font-weight: 700; margin-left: 8px; min-width: 45px; text-transform: uppercase; }
+  .toggle-label.available { color: var(--available-green); }
+  .toggle-label.unavailable { color: var(--unavailable-grey); }
+  .sub-option-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--kfc-grey); border-radius: 6px; margin-top: 6px; }
+  .sub-option-name { font-size: 0.85rem; font-weight: 600; color: var(--kfc-black); }
+  .loading-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.95); z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: 'Oswald', sans-serif; font-size: 1.2rem; color: var(--kfc-red); }
+  .sync-status { position: fixed; top: 8px; left: 50%; transform: translateX(-50%); background: var(--kfc-black); color: white; padding: 6px 14px; border-radius: 20px; font-size: 0.7rem; font-weight: 700; z-index: 300; font-family: 'Oswald', sans-serif; letter-spacing: 1px; opacity: 0; transition: opacity 0.3s; }
+  .sync-status.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div id="loadingOverlay" class="loading-overlay">
+  <div style="font-size: 2rem; margin-bottom: 10px;">🍗</div>
+  Loading HNK TapsiHouse...
+</div>
+
+<div id="syncStatus" class="sync-status">🔄 Syncing...</div>
+
+<header>
+  <div class="header-top">
+    <div class="logo-area">
+      <div class="logo-icon">H</div>
+      <div class="logo-text">HNK TAPSIHOUSE <span>Eat • Enjoy • Come Again!</span></div>
+    </div>
+    <button class="admin-login-btn" onclick="openLoginModal()">🔒 ADMIN</button>
+  </div>
+  <div class="marquee-wrapper">
+    <div class="marquee-content">
+      <h1>🍽️ HNK TAPSIHOUSE — Good Food, Good Mood!</h1>
+      <p>Order Now via WhatsApp!</p>
+    </div>
+  </div>
+  <div class="store-info-bar">
+    <div class="info-row">
+      <span class="info-icon">🕐</span>
+      <span class="info-text"><strong>Store Hours:</strong> Open from Monday - Saturday 11am - 11:30pm</span>
+    </div>
+    <div class="info-row">
+      <span class="info-icon">📍</span>
+      <span class="info-text"><strong>Address:</strong> 126 Almazor St. Maricaban, Pasay City</span>
+    </div>
+    <div class="info-row">
+      <span class="info-icon">📘</span>
+      <span class="info-text"><strong>Facebook Page:</strong> <a href="https://www.facebook.com/hnktakoyaki" target="_blank">facebook.com/hnktakoyaki</a></span>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+  <div class="category-nav" id="categoryNav"></div>
+  <div id="menuList"></div>
+</div>
+
+<div class="cart-summary" id="cartSummary" style="display:none;">
+  <div class="total-info">
+    <span class="total-label">My Order</span>
+    <span class="total-amount" id="cartTotal">₱0</span>
+  </div>
+  <button class="btn-checkout" onclick="openCheckout()">View Order</button>
+</div>
+
+<!-- ADMIN LOGIN MODAL -->
+<div class="modal" id="loginModal">
+  <div class="modal-content">
+    <h2>🔒 Admin Login</h2>
+    <div class="form-group">
+      <label>Password:</label>
+      <input type="password" id="adminPassword" placeholder="Enter admin password">
+    </div>
+    <div style="display:flex; gap:10px; margin-top:10px;">
+      <button class="btn-close" onclick="closeModal('loginModal')" style="margin-top:0; flex:1;">Cancel</button>
+      <button class="btn-checkout" onclick="checkPassword()" style="flex:2;">Login</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN PANEL MODAL -->
+<div class="modal" id="adminPanelModal">
+  <div class="modal-content">
+    <h2>⚙️ Admin Panel</h2>
+    <div class="info-note" style="margin-bottom: 20px;">
+      💡 Ang mga pagbabago dito ay <strong>real-time</strong>. Kapag ni-toggle mo, agad itong mag-u-update sa lahat ng device.
+    </div>
+    <div id="adminMenuList" class="admin-panel"></div>
+    <button class="btn-close" onclick="closeModal('adminPanelModal')" style="margin-top:10px;">Close Admin Panel</button>
+  </div>
+</div>
+
+<!-- CUSTOMIZE MODAL -->
+<div class="modal" id="customizeModal">
+  <div class="modal-content">
+    <h2 id="customizeTitle">Customize Item</h2>
+    <div id="specialCustomUI" style="display:none;">
+      <div class="form-group">
+        <label>1. Pumili ng Set:</label>
+        <div class="option-group" id="setOptions">
+          <button class="option-btn active" onclick="selectSpecialOption('set', 'kompleto', 'Kompleto', this)">Kompleto</button>
+          <button class="option-btn" onclick="selectSpecialOption('set', 'ulam_lang', 'Ulam Lang', this)" id="ulamLangBtn">Ulam Lang</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>2. May Egg ba?</label>
+        <div class="option-group" id="eggOptions">
+          <button class="option-btn active" onclick="selectSpecialOption('egg', 'May Egg', 'May Egg', this)">May Egg</button>
+          <button class="option-btn" onclick="selectSpecialOption('egg', 'Walang Egg', 'Walang Egg', this)">Walang Egg</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>3. May Rice ba?</label>
+        <div class="option-group" id="riceOptions">
+          <button class="option-btn active" onclick="selectSpecialOption('rice', 'May Rice', 'May Rice', this)">May Rice</button>
+          <button class="option-btn" onclick="selectSpecialOption('rice', 'Walang Rice', 'Walang Rice', this)">Walang Rice</button>
+        </div>
+      </div>
+    </div>
+    <div id="simpleCustomUI" style="display:none;">
+      <div class="form-group">
+        <label>May Egg ba?</label>
+        <div class="option-group" id="simpleEggOptions">
+          <button class="option-btn active" onclick="selectSimpleOption('egg', 'May Egg', this)">May Egg</button>
+          <button class="option-btn" onclick="selectSimpleOption('egg', 'Walang Egg', this)">Walang Egg</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>May Rice ba?</label>
+        <div class="option-group" id="simpleRiceOptions">
+          <button class="option-btn active" onclick="selectSimpleOption('rice', 'May Rice', this)">May Rice</button>
+          <button class="option-btn" onclick="selectSimpleOption('rice', 'Walang Rice', this)">Walang Rice</button>
+        </div>
+      </div>
+    </div>
+    <div id="noCustomUI" style="display:none;">
+      <p style="text-align:center; color:#666; font-weight:700; margin-bottom:10px;">Pumili lang ng dami ng order.</p>
+    </div>
+    <div id="flavorCustomUI" style="display:none;">
+      <div class="form-group">
+        <label>Anong flavor?</label>
+        <div class="option-group" id="flavorOptions"></div>
+      </div>
+    </div>
+    <div id="styleCustomUI" style="display:none;">
+      <div class="form-group">
+        <label>Paano luto?</label>
+        <div class="option-group" id="styleOptions"></div>
+      </div>
+    </div>
+    <div id="riceSizeCustomUI" style="display:none;">
+      <div class="form-group">
+        <label>Anong laki ng rice?</label>
+        <div class="option-group" id="riceSizeOptions">
+          <button class="option-btn active" onclick="selectRiceSize('Regular', this)">Regular</button>
+          <button class="option-btn" onclick="selectRiceSize('Half', this)">Half</button>
+        </div>
+      </div>
+    </div>
+    <div class="form-group" style="text-align: center; margin-top: 10px;">
+      <label>Ilang Order?</label>
+      <div class="qty-controls-card" style="max-width: 160px; margin: 0 auto;">
+        <button class="qty-btn-small" onclick="changeModalQty(-1)">−</button>
+        <span class="qty-display" id="modalQtyDisplay">1</span>
+        <button class="qty-btn-small plus" onclick="changeModalQty(1)">+</button>
+      </div>
+    </div>
+    <div class="info-note" style="text-align: center; font-size: 1.2rem; font-weight: 900; color: var(--kfc-red); margin-bottom: 20px; margin-top: 10px;">
+      Presyo: ₱<span id="livePrice">0</span> <span style="font-size:0.8rem; color:#666; font-weight:700;">(per order)</span>
+    </div>
+    <div style="display:flex; gap:10px; margin-top:10px;">
+      <button class="btn-close" onclick="closeModal('customizeModal')" style="margin-top:0; flex:1;">Kanselahin</button>
+      <button class="btn-checkout" onclick="confirmAddToCart()" style="flex:2;">Add to Order</button>
+    </div>
+  </div>
+</div>
+
+<!-- CHECKOUT MODAL -->
+<div class="modal" id="checkoutModal">
+  <div class="modal-content">
+    <h2>📝 View Order</h2>
+    <div class="form-group">
+      <label>Ang iyong order (Pwede pa i-edit):</label>
+      <div class="order-list" id="checkoutItems"></div>
+      <div class="order-total" id="checkoutTotal"></div>
+    </div>
+    <div class="form-group">
+      <label>Pangalan mo:</label>
+      <input type="text" id="customerName" placeholder="Juan Dela Cruz" autocomplete="name">
+    </div>
+    <div class="form-group">
+      <label>I-send ang bayad sa:</label>
+      <div class="info-note" style="margin-top:8px; margin-bottom: 12px;">
+        💬 Magpapadala ka ng payment proof sa WhatsApp. Dito na rin tayo mag-uusap kung kailan ready for pickup.
+      </div>
+      <div class="chat-options">
+        <button class="chat-btn chat-whatsapp" onclick="submitOrder('whatsapp')">💬 Order via WhatsApp</button>
+      </div>
+    </div>
+    <button class="btn-close" onclick="closeModal('checkoutModal')">Bumalik sa Menu</button>
+  </div>
+</div>
+
+<!-- SUCCESS MODAL -->
+<div class="modal" id="successModal">
+  <div class="modal-content">
+    <div style="text-align:center; font-size: 4rem; margin-bottom: 10px;">✅</div>
+    <h2>Order Received!</h2>
+    <p style="text-align:center; margin-bottom: 20px; color: #555; font-weight: 700;">I-click ang link sa ibaba para i-send ang order details at proof of payment.</p>
+    <div class="chat-link-box" id="chatLinkBox"></div>
+    <div class="info-note" style="margin-top:16px;">📱 Hintayin ang reply namin sa chat para sa confirmation at update kung kailan ready for pickup. Salamat!</div>
+    <button class="btn-close" onclick="closeSuccess()">OK, Sige!</button>
+  </div>
+</div>
+
+<script>
+// ============ CONFIGURATION ============
+const CONFIG = {
+  whatsappNumber: "639932429485",
+  adminPassword: "hnkadmin2024",
+  // 👇 I-PASTE DITO ANG SUPABASE URL MO (hal: https://xxxxx.supabase.co)
+  supabaseUrl: "https://mztzxutntiwzakulamsc.supabase.co",
+  // 👇 I-PASTE DITO ANG SUPABASE PUBLISHABLE KEY MO
+  supabaseAnonKey: "sb_publishable_jEuGAYo5zxhE4LYk5nmn4A_1JTdeI6X"
+};
+
+// ✅ FIX: Ginamit ang 'supabaseClient' sa halip na 'supabase' para iwas sa conflict sa global variable
+const supabaseClient = window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseAnonKey);
+
+const MENU = {
+  "Silog Meals": [
+    { id: "porksilog", name: "Porksilog", basePrice: 90, specialCustom: true, meatName: "Pork Lang" },
+    { id: "chicksilog", name: "Chicksilog", basePrice: 90, specialCustom: true, meatName: "Chicken Lang" },
+    { id: "malingsilog", name: "Malingsilog (2pcs)", basePrice: 90, specialCustom: true, meatName: "Maling Lang" },
+    { id: "tocinosilog", name: "Tocinosilog", basePrice: 90, simpleCustom: true },
+    { id: "hotsilog", name: "Hotsilog (1pc TJ jumbo)", basePrice: 70, simpleCustom: true },
+    { id: "siomaisilog", name: "Siomaisilog (3pcs big siomai) (Pork)", basePrice: 69, noCustom: true },
+    { id: "skinsilog", name: "Skinsilog (4pcs)", basePrice: 90, simpleCustom: true },
+    { id: "longsilog", name: "Longsilog (3pcs)", basePrice: 90, simpleCustom: true },
+    { id: "cornsilog", name: "Cornsilog", basePrice: 90, simpleCustom: true },
+    { id: "tempurasilog", name: "Tempurasilog (2pcs)", basePrice: 90, simpleCustom: true },
+    { id: "nuggetsilog", name: "Nuggetsilog (5pcs)", basePrice: 90, simpleCustom: true },
+    { id: "shanghaisilog", name: "Shanghaisilog (6pcs)", basePrice: 90, simpleCustom: true },
+  ],
+  "Mami at Soup": [
+    { id: "beefmami", name: "Beef Mami", price: 70 },
+    { id: "siomaimami", name: "Siomai mami with 3pcs big siomai (Pork)", price: 70 },
+    { id: "siomaisoup", name: "Siomai soup with 4pcs big siomai (Pork)", price: 65 },
+  ],
+  "Takoyaki": [
+    { id: "specialcheesy", name: "Special Cheesy", desc: "Octobits, cheese, cabbage, bonito, sauce and jap mayo", sizes: [{ label: "12 pcs", price: 175 }, { label: "8 pcs", price: 145 }, { label: "5 pcs", price: 105 }] },
+    { id: "specialauthentic", name: "Special Authentic", desc: "Octobits, cabbage, bonito, sauce and jap mayo", sizes: [{ label: "12 pcs", price: 160 }, { label: "8 pcs", price: 120 }, { label: "5 pcs", price: 90 }] },
+    { id: "cheesymaru", name: "Cheesy Maru", desc: "Cheese, cabbage, bonito, sauce and jap mayo", sizes: [{ label: "12 pcs", price: 130 }, { label: "8 pcs", price: 110 }, { label: "5 pcs", price: 70 }] },
+    { id: "hamandcheese", name: "Ham and Cheese", desc: "Cheese, ham, cabbage, bonito, sauce and jap mayo", sizes: [{ label: "12 pcs", price: 150 }, { label: "8 pcs", price: 120 }, { label: "5 pcs", price: 85 }] },
+    { id: "crabstick", name: "Crabstick", desc: "Crabstick, cabbage, bonito, sauce and jap mayo", sizes: [{ label: "12 pcs", price: 150 }, { label: "8 pcs", price: 120 }, { label: "5 pcs", price: 85 }] },
+  ],
+  "Drinks": [
+    { id: "coke", name: "Coke Mismo", price: 25 },
+    { id: "royal", name: "Royal Mismo", price: 25 },
+    { id: "mountaindew", name: "Mountain Dew Mismo", price: 25 },
+    { id: "sprite", name: "Sprite Mismo", price: 25 },
+  ],
+  "Extra": [
+    { id: "plainrice", name: "Plain Rice", basePrice: 13, riceSizeCustom: true },
+    { id: "friedrice", name: "Fried Rice", basePrice: 18, riceSizeCustom: true },
+    { id: "egg", name: "Egg", basePrice: 15, styleCustom: true, subOptions: ['Fried', 'Boiled'] },
+    { id: "siomaibig", name: "Siomai Big (Pork)", price: 12 },
+    { id: "regularsiomai", name: "Regular Siomai", basePrice: 6, flavorCustom: true, subOptions: ['Pork', 'Japanese Crabstick'] },
+  ],
+};
+
+let cart = {}; 
+let pendingItem = null;
+let currentOptions = {};
+let modalQty = 1;
+let menuAvailability = {};
+let syncChannel = null;
+
+// ============ SUPABASE REAL-TIME SYNC ============
+async function initSupabaseSync() {
+  try {
+    const { data, error } = await supabaseClient.from('menu_availability').select('*');
+    
+    if (error) {
+      console.error("Supabase fetch error:", error);
+      document.getElementById('loadingOverlay').innerHTML = `
+        <div style="font-size: 2rem; margin-bottom: 10px;">⚠️</div>
+        <div style="font-size: 1rem; color: #333;">Error connecting to database.</div>
+        <div style="font-size: 0.8rem; color: #666; margin-top: 10px; max-width: 80%; text-align: center;">${error.message}</div>
+      `;
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      await initializeDefaultAvailability();
+      return;
+    }
+
+    data.forEach(row => {
+      menuAvailability[row.id] = row.is_available;
+    });
+
+    hideLoading();
+    renderMenu();
+    setupRealtimeListener();
+    
+  } catch (err) {
+    console.error("Init error:", err);
+    document.getElementById('loadingOverlay').innerHTML = `
+      <div style="font-size: 2rem; margin-bottom: 10px;">⚠️</div>
+      <div style="font-size: 1rem; color: #333;">Error: ${err.message}</div>
+    `;
+  }
+}
+
+function setupRealtimeListener() {
+  if (syncChannel) syncChannel.unsubscribe();
+  
+  syncChannel = supabaseClient.channel('menu_changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'menu_availability' }, payload => {
+      const newRow = payload.new;
+      if (newRow) {
+        menuAvailability[newRow.id] = newRow.is_available;
+      }
+      showSyncStatus();
+      renderMenu();
+      if (document.getElementById('adminPanelModal').classList.contains('active')) {
+        renderAdminMenuList();
+      }
+    })
+    .subscribe(status => {
+      console.log('Realtime status:', status);
+    });
+}
+
+async function initializeDefaultAvailability() {
+  const defaults = [];
+  for (const [category, items] of Object.entries(MENU)) {
+    items.forEach(item => {
+      if (item.sizes) {
+        item.sizes.forEach(size => {
+          defaults.push({ id: `${item.id}_${size.label}`, is_available: true });
+        });
+      } else {
+        defaults.push({ id: item.id, is_available: true });
+        if (item.subOptions) {
+          item.subOptions.forEach(opt => {
+            defaults.push({ id: `${item.id}_sub_${opt}`, is_available: true });
+          });
+        }
+      }
+    });
+  }
+  
+  for (let i = 0; i < defaults.length; i += 50) {
+    await supabaseClient.from('menu_availability').upsert(defaults.slice(i, i + 50));
+  }
+}
+
+function isAvailable(id) {
+  return menuAvailability[id] !== false;
+}
+
+async function toggleAvailability(id) {
+  const currentState = menuAvailability[id] !== false;
+  showSyncStatus();
+  await supabaseClient.from('menu_availability').upsert({ id: id, is_available: !currentState });
+}
+
+function showSyncStatus() {
+  const status = document.getElementById('syncStatus');
+  status.classList.add('show');
+  setTimeout(() => status.classList.remove('show'), 1500);
+}
+
+function hideLoading() {
+  document.getElementById('loadingOverlay').style.display = 'none';
+}
+
+// ============ UI RENDERING ============
+function renderCategoryNav() {
+  const nav = document.getElementById('categoryNav');
+  let html = `<button class="cat-pill active" onclick="scrollToCategory('all', this)">All</button>`;
+  for (const category of Object.keys(MENU)) {
+    html += `<button class="cat-pill" onclick="scrollToCategory('${category}', this)">${category}</button>`;
+  }
+  nav.innerHTML = html;
+}
+
+function scrollToCategory(category, btn) {
+  document.querySelectorAll('.cat-pill').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  if (category === 'all') { window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+  const headers = document.querySelectorAll('.cat-header');
+  for (const header of headers) {
+    if (header.textContent.trim() === category) {
+      window.scrollTo({ top: header.getBoundingClientRect().top + window.scrollY - 80, behavior: 'smooth' });
+      break;
+    }
+  }
+}
+
+function renderMenu() {
+  const list = document.getElementById('menuList');
+  let html = '';
+
+  for (const [category, items] of Object.entries(MENU)) {
+    html += `<div class="cat-header">${category}</div>`;
+    html += `<div class="menu-grid">`;
+
+    items.forEach(item => {
+      if (item.sizes) {
+        const availableSizes = item.sizes.filter(size => isAvailable(`${item.id}_${size.label}`));
+        if (availableSizes.length === 0) return;
+        
+        html += `<div class="menu-card" style="grid-column: span 2; text-align: left; min-height: auto;">
+          <h3>${item.name}</h3><div class="desc">${item.desc}</div>
+          <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">`;
+        item.sizes.forEach(size => {
+          const key = `${item.id}_${size.label}`;
+          if (!isAvailable(key)) return;
+          const qty = cart[key]?.qty || 0;
+          html += `<div style="display: flex; justify-content: space-between; align-items: center; background: var(--kfc-grey); padding: 8px 12px; border-radius: 4px;">
+            <span style="font-size: 0.9rem; font-weight: 700;">${size.label} <span style="color:var(--kfc-red);">₱${size.price}</span></span>
+            ${qty === 0
+              ? `<button class="add-btn" style="width: auto; padding: 6px 16px; font-size: 0.75rem;" onclick="addToCart('${key}', '${item.name} (${size.label})', ${size.price})">Add to Cart</button>`
+              : `<div class="qty-controls-card">
+                  <button class="qty-btn-small" onclick="changeQty('${key}', -1)">−</button>
+                  <span class="qty-display">${qty}</span>
+                  <button class="qty-btn-small plus" onclick="changeQty('${key}', 1)">+</button>
+                 </div>`
+            }
+          </div>`;
+        });
+        html += `</div></div>`;
+      } else {
+        if (!isAvailable(item.id)) return;
+        
+        let btnHtml = '';
+        let typeStr = '';
+        if (item.specialCustom) typeStr = 'special';
+        else if (item.simpleCustom) typeStr = 'simple';
+        else if (item.noCustom) typeStr = 'no';
+        else if (item.flavorCustom) typeStr = 'flavor';
+        else if (item.styleCustom) typeStr = 'style';
+        else if (item.riceSizeCustom) typeStr = 'riceSize';
+
+        if (typeStr) {
+          btnHtml = `<button class="add-btn" onclick="openCustomizeModal('${item.id}', '${item.name}', ${item.basePrice}, '${typeStr}')">Add to Cart</button>`;
+        } else {
+          const qty = cart[item.id]?.qty || 0;
+          btnHtml = qty === 0 
+            ? `<button class="add-btn" onclick="addToCart('${item.id}', '${item.name}', ${item.price})">Add to Cart</button>`
+            : `<div class="qty-controls-card">
+                <button class="qty-btn-small" onclick="changeQty('${item.id}', -1)">−</button>
+                <span class="qty-display">${qty}</span>
+                <button class="qty-btn-small plus" onclick="changeQty('${item.id}', 1)">+</button>
+               </div>`;
+        }
+        
+        html += `<div class="menu-card">
+          <h3>${item.name}</h3>
+          <div class="price">₱${item.basePrice || item.price}</div>
+          ${btnHtml}
+        </div>`;
+      }
+    });
+    html += `</div>`;
+  }
+  list.innerHTML = html;
+  updateCartSummary();
+}
+
+function openCustomizeModal(id, name, basePrice, type) {
+  pendingItem = { id, name, basePrice, type };
+  modalQty = 1;
+  document.getElementById('modalQtyDisplay').textContent = modalQty;
+
+  ['specialCustomUI', 'simpleCustomUI', 'noCustomUI', 'flavorCustomUI', 'styleCustomUI', 'riceSizeCustomUI'].forEach(uid => {
+    document.getElementById(uid).style.display = 'none';
+  });
+
+  if (type === 'special') {
+    const item = Object.values(MENU).flat().find(i => i.id === id);
+    document.getElementById('ulamLangBtn').textContent = item.meatName || "Ulam Lang";
+    document.getElementById('specialCustomUI').style.display = 'block';
+    currentOptions = { set: 'kompleto', set_display: 'Kompleto', egg: 'May Egg', egg_display: 'May Egg', rice: 'May Rice', rice_display: 'May Rice' };
+    document.querySelectorAll('#setOptions .option-btn')[0].classList.add('active');
+    document.querySelectorAll('#setOptions .option-btn')[1].classList.remove('active');
+    document.querySelectorAll('#eggOptions .option-btn')[0].classList.add('active');
+    document.querySelectorAll('#eggOptions .option-btn')[1].classList.remove('active');
+    document.querySelectorAll('#riceOptions .option-btn')[0].classList.add('active');
+    document.querySelectorAll('#riceOptions .option-btn')[1].classList.remove('active');
+    updateLivePrice();
+  } 
+  else if (type === 'simple') {
+    document.getElementById('simpleCustomUI').style.display = 'block';
+    currentOptions = { egg: 'May Egg', rice: 'May Rice' };
+    document.querySelectorAll('#simpleEggOptions .option-btn').forEach(btn => btn.classList.toggle('active', btn.textContent === 'May Egg'));
+    document.querySelectorAll('#simpleRiceOptions .option-btn').forEach(btn => btn.classList.toggle('active', btn.textContent === 'May Rice'));
+    updateLivePrice();
+  } 
+  else if (type === 'no') {
+    document.getElementById('noCustomUI').style.display = 'block';
+    pendingItem.finalPrice = basePrice;
+    document.getElementById('livePrice').textContent = basePrice;
+  } 
+  else if (type === 'flavor') {
+    document.getElementById('flavorCustomUI').style.display = 'block';
+    const item = Object.values(MENU).flat().find(i => i.id === id);
+    const availableOpts = (item.subOptions || []).filter(opt => isAvailable(`${id}_sub_${opt}`));
+    const defaultOpt = availableOpts.length > 0 ? availableOpts[0] : 'Pork';
+    currentOptions = { flavor: defaultOpt };
+    
+    let flavorHtml = '';
+    (item.subOptions || ['Pork', 'Japanese Crabstick']).forEach(opt => {
+      const available = isAvailable(`${id}_sub_${opt}`);
+      const activeClass = opt === defaultOpt ? 'active' : '';
+      const disabledStyle = available ? '' : 'opacity:0.4; pointer-events:none;';
+      flavorHtml += `<button class="option-btn ${activeClass}" style="${disabledStyle}" onclick="selectSimpleOption('flavor', '${opt}', this)">${opt}</button>`;
+    });
+    document.getElementById('flavorOptions').innerHTML = flavorHtml;
+    pendingItem.finalPrice = basePrice;
+    document.getElementById('livePrice').textContent = basePrice;
+  } 
+  else if (type === 'style') {
+    document.getElementById('styleCustomUI').style.display = 'block';
+    const item = Object.values(MENU).flat().find(i => i.id === id);
+    const availableOpts = (item.subOptions || []).filter(opt => isAvailable(`${id}_sub_${opt}`));
+    const defaultOpt = availableOpts.length > 0 ? availableOpts[0] : 'Fried';
+    currentOptions = { style: defaultOpt };
+    
+    let styleHtml = '';
+    (item.subOptions || ['Fried', 'Boiled']).forEach(opt => {
+      const available = isAvailable(`${id}_sub_${opt}`);
+      const activeClass = opt === defaultOpt ? 'active' : '';
+      const disabledStyle = available ? '' : 'opacity:0.4; pointer-events:none;';
+      styleHtml += `<button class="option-btn ${activeClass}" style="${disabledStyle}" onclick="selectSimpleOption('style', '${opt}', this)">${opt}</button>`;
+    });
+    document.getElementById('styleOptions').innerHTML = styleHtml;
+    pendingItem.finalPrice = basePrice;
+    document.getElementById('livePrice').textContent = basePrice;
+  }
+  else if (type === 'riceSize') {
+    document.getElementById('riceSizeCustomUI').style.display = 'block';
+    currentOptions = { riceSize: 'Regular' };
+    document.querySelectorAll('#riceSizeOptions .option-btn').forEach(btn => btn.classList.toggle('active', btn.textContent === 'Regular'));
+    pendingItem.finalPrice = basePrice;
+    document.getElementById('livePrice').textContent = basePrice;
+  }
+
+  document.getElementById('customizeTitle').textContent = `Customize: ${name}`;
+  document.getElementById('customizeModal').classList.add('active');
+}
+
+function selectSpecialOption(category, value, displayValue, btn) {
+  currentOptions[category] = value;
+  currentOptions[category + '_display'] = displayValue;
+  const parent = btn.parentElement;
+  parent.querySelectorAll('.option-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+
+  if (category === 'set' && value === 'kompleto') {
+    currentOptions.egg = 'May Egg'; currentOptions.egg_display = 'May Egg';
+    currentOptions.rice = 'May Rice'; currentOptions.rice_display = 'May Rice';
+    document.querySelectorAll('#eggOptions .option-btn')[0].classList.add('active');
+    document.querySelectorAll('#eggOptions .option-btn')[1].classList.remove('active');
+    document.querySelectorAll('#riceOptions .option-btn')[0].classList.add('active');
+    document.querySelectorAll('#riceOptions .option-btn')[1].classList.remove('active');
+  }
+  updateLivePrice();
+}
+
+function selectSimpleOption(category, value, btn) {
+  currentOptions[category] = value;
+  const parent = btn.parentElement;
+  parent.querySelectorAll('.option-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (pendingItem && pendingItem.type === 'simple') updateLivePrice();
+}
+
+function selectRiceSize(size, btn) {
+  currentOptions.riceSize = size;
+  const parent = btn.parentElement;
+  parent.querySelectorAll('.option-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  updateLivePrice();
+}
+
+function changeModalQty(delta) {
+  modalQty += delta;
+  if (modalQty < 1) modalQty = 1;
+  if (modalQty > 20) modalQty = 20;
+  document.getElementById('modalQtyDisplay').textContent = modalQty;
+}
+
+function updateLivePrice() {
+  if (!pendingItem) return;
+  let price = pendingItem.basePrice;
+  const base = pendingItem.basePrice;
+
+  if (pendingItem.type === 'special') {
+    if (currentOptions.set === 'kompleto') price = base; 
+    else {
+      let deduction = 0;
+      if (currentOptions.egg === 'Walang Egg') deduction += 15;
+      if (currentOptions.rice === 'Walang Rice') deduction += 15;
+      price = base - deduction;
+    }
+  } else if (pendingItem.type === 'simple') {
+    let deduction = 0;
+    if (currentOptions.egg === 'Walang Egg') deduction += 15;
+    if (currentOptions.rice === 'Walang Rice') deduction += 15;
+    price = base - deduction;
+  } else if (pendingItem.type === 'riceSize') {
+    if (currentOptions.riceSize === 'Half') {
+      price = pendingItem.id === 'plainrice' ? 7 : 10;
+    } else {
+      price = base;
+    }
+  }
+
+  document.getElementById('livePrice').textContent = price;
+  pendingItem.finalPrice = price;
+}
+
+function confirmAddToCart() {
+  if (!pendingItem) return;
+  
+  let finalName = pendingItem.name;
+  let finalPrice = pendingItem.finalPrice;
+  let optionKey = '';
+
+  if (pendingItem.type === 'special') {
+    if (currentOptions.set === 'kompleto') finalName += " (Kompleto)";
+    else finalName += ` (${currentOptions.set_display}, ${currentOptions.egg_display}, ${currentOptions.rice_display})`;
+    optionKey = `${currentOptions.set}_${currentOptions.egg}_${currentOptions.rice}`;
+  } 
+  else if (pendingItem.type === 'simple') {
+    let opts = [];
+    if (currentOptions.egg === 'Walang Egg') opts.push('Walang Egg');
+    if (currentOptions.rice === 'Walang Rice') opts.push('Walang Rice');
+    
+    if (pendingItem.id === 'hotsilog' && currentOptions.egg === 'Walang Egg' && currentOptions.rice === 'Walang Rice') {
+      finalName += " (Hotdog Lang)";
+    } else if (opts.length > 0) {
+      finalName += ` (${opts.join(', ')})`;
+    }
+    optionKey = `${currentOptions.egg}_${currentOptions.rice}`;
+  } 
+  else if (pendingItem.type === 'flavor') {
+    finalName += ` (${currentOptions.flavor})`;
+    optionKey = currentOptions.flavor;
+  } 
+  else if (pendingItem.type === 'style') {
+    finalName += ` (${currentOptions.style})`;
+    optionKey = currentOptions.style;
+  }
+  else if (pendingItem.type === 'riceSize') {
+    finalName += ` (${currentOptions.riceSize})`;
+    optionKey = currentOptions.riceSize;
+  }
+  
+  const safeKey = `${pendingItem.id}_${optionKey}`;
+  
+  if (!cart[safeKey]) {
+    cart[safeKey] = { name: finalName, price: finalPrice, qty: 0, baseId: pendingItem.id };
+  }
+  cart[safeKey].qty += modalQty;
+  
+  closeModal('customizeModal');
+  renderMenu();
+}
+
+function addToCart(key, name, price) {
+  if (!cart[key]) cart[key] = { name, price, qty: 1, baseId: key };
+  else cart[key].qty++;
+  renderMenu();
+}
+
+function changeQty(key, delta) {
+  let targetKey = key;
+  if (!cart[targetKey]) {
+    const found = Object.keys(cart).find(k => cart[k].baseId === key);
+    if (found) targetKey = found;
+  }
+  if (!cart[targetKey]) return;
+  cart[targetKey].qty += delta;
+  if (cart[targetKey].qty <= 0) delete cart[targetKey];
+  renderMenu();
+}
+
+function editCheckoutQty(key, delta) {
+  if (!cart[key]) return;
+  if (delta === -999) {
+    delete cart[key];
+  } else {
+    cart[key].qty += delta;
+    if (cart[key].qty <= 0) delete cart[key];
+  }
+  openCheckout();
+  renderMenu();
+}
+
+function updateCartSummary() {
+  const total = Object.values(cart).reduce((sum, item) => sum + (item.price * item.qty), 0);
+  const summary = document.getElementById('cartSummary');
+  if (total > 0) {
+    summary.style.display = 'flex';
+    document.getElementById('cartTotal').textContent = '₱' + total.toLocaleString('en-PH', {minimumFractionDigits: 2});
+  } else {
+    summary.style.display = 'none';
+  }
+}
+
+function openCheckout() {
+  const itemsDiv = document.getElementById('checkoutItems');
+  let total = 0;
+  
+  const cartEntries = Object.entries(cart);
+  if (cartEntries.length === 0) {
+    itemsDiv.innerHTML = '<div style="text-align:center; color:#999; padding:20px;">Wala pang order.</div>';
+    document.getElementById('checkoutTotal').textContent = 'Total: ₱0.00';
+  } else {
+    itemsDiv.innerHTML = cartEntries.map(([key, item]) => {
+      const subtotal = item.price * item.qty;
+      total += subtotal;
+      return `<div class="order-list-item">
+        <div class="order-item-details">
+          <div class="order-item-name">${item.name}</div>
+          <div class="order-item-price">₱${item.price} × ${item.qty} = ₱${subtotal.toFixed(2)}</div>
+        </div>
+        <div class="order-item-controls">
+          <button class="qty-btn-small" onclick="editCheckoutQty('${key}', -1)">−</button>
+          <span class="qty-display">${item.qty}</span>
+          <button class="qty-btn-small plus" onclick="editCheckoutQty('${key}', 1)">+</button>
+          <button class="qty-btn-small delete" onclick="editCheckoutQty('${key}', -999)">🗑</button>
+        </div>
+      </div>`;
+    }).join('');
+    document.getElementById('checkoutTotal').textContent = 'Total: ₱' + total.toLocaleString('en-PH', {minimumFractionDigits: 2});
+  }
+  
+  document.getElementById('checkoutModal').classList.add('active');
+}
+
+function submitOrder(platform) {
+  const name = document.getElementById('customerName').value.trim();
+  if (!name) { alert('Pakilagay ang iyong pangalan!'); return; }
+  if (Object.keys(cart).length === 0) { alert('Wala nang laman ang order mo!'); return; }
+
+  const items = Object.values(cart).map(item => ({
+    name: item.name, price: item.price, qty: item.qty, subtotal: item.price * item.qty
+  }));
+  const total = items.reduce((s, i) => s + i.subtotal, 0);
+
+  const message = buildChatMessage(name, items, total);
+  const link = getChatLink(platform, message);
+
+  document.getElementById('chatLinkBox').innerHTML =
+    `<strong>WhatsApp</strong><br>
+     <a href="${link}" target="_blank">👉 I-click dito para mag-chat at magbayad</a>
+     <small style="color:#666; display:block; margin-top:6px;">Total: ₱${total.toFixed(2)}</small>`;
+
+  closeModal('checkoutModal');
+  document.getElementById('successModal').classList.add('active');
+
+  cart = {};
+  document.getElementById('customerName').value = '';
+  renderMenu();
+}
+
+function buildChatMessage(name, items, total) {
+  let msg = `🍽️ BAGONG ORDER - HNK TAPSIHOUSE\n━━━━━━━━━━━━━━━━━━\n`;
+  msg += `Pangalan: ${name}\n━━━━━━━━━━━━━━━━━━\n\nMga Item:\n`;
+  items.forEach(i => {
+    msg += `• ${i.name} × ${i.qty} = ₱${i.subtotal.toFixed(2)}\n`;
+  });
+  msg += `\n💰 TOTAL: ₱${total.toFixed(2)}\n\n⚠️ Lulutuin ang order once natanggap ang payment. Magpapadala ako ng proof of payment. Paki-confirm po at sabihin kung kailan ready for pickup. Salamat! 😊`;
+  return msg;
+}
+
+function getChatLink(platform, message) {
+  const encoded = encodeURIComponent(message);
+  if (platform === 'whatsapp') return `https://api.whatsapp.com/send?phone=${CONFIG.whatsappNumber}&text=${encoded}`;
+  return '#';
+}
+
+// ============ ADMIN FUNCTIONS ============
+function openLoginModal() {
+  document.getElementById('adminPassword').value = '';
+  document.getElementById('loginModal').classList.add('active');
+}
+
+function checkPassword() {
+  const password = document.getElementById('adminPassword').value;
+  if (password === CONFIG.adminPassword) {
+    closeModal('loginModal');
+    openAdminPanel();
+  } else {
+    alert('Mali ang password! Subukan ulit.');
+  }
+}
+
+function openAdminPanel() {
+  renderAdminMenuList();
+  document.getElementById('adminPanelModal').classList.add('active');
+}
+
+function renderAdminMenuList() {
+  const list = document.getElementById('adminMenuList');
+  let html = '';
+
+  for (const [category, items] of Object.entries(MENU)) {
+    html += `<div class="admin-category-title">${category}</div>`;
+    
+    items.forEach(item => {
+      if (item.sizes) {
+        item.sizes.forEach(size => {
+          const key = `${item.id}_${size.label}`;
+          const available = isAvailable(key);
+          html += `<div class="admin-menu-item">
+            <div class="admin-menu-info">
+              <div class="admin-menu-name">${item.name} - ${size.label}</div>
+              <div class="admin-menu-price">₱${size.price}</div>
+            </div>
+            <div style="display: flex; align-items: center;">
+              <label class="toggle-switch">
+                <input type="checkbox" ${available ? 'checked' : ''} onchange="toggleAvailability('${key}')">
+                <span class="toggle-slider"></span>
+              </label>
+              <span class="toggle-label ${available ? 'available' : 'unavailable'}">${available ? 'ON' : 'OFF'}</span>
+            </div>
+          </div>`;
+        });
+      } else {
+        const available = isAvailable(item.id);
+        html += `<div class="admin-menu-item" style="flex-direction: column; align-items: stretch;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div class="admin-menu-info">
+              <div class="admin-menu-name">${item.name}</div>
+              <div class="admin-menu-price">₱${item.basePrice || item.price}</div>
+            </div>
+            <div style="display: flex; align-items: center;">
+              <label class="toggle-switch">
+                <input type="checkbox" ${available ? 'checked' : ''} onchange="toggleAvailability('${item.id}')">
+                <span class="toggle-slider"></span>
+              </label>
+              <span class="toggle-label ${available ? 'available' : 'unavailable'}">${available ? 'ON' : 'OFF'}</span>
+            </div>
+          </div>
+          ${item.subOptions ? renderSubOptions(item) : ''}
+        </div>`;
+      }
+    });
+  }
+
+  list.innerHTML = html;
+}
+
+function renderSubOptions(item) {
+  let html = '<div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed #ddd;">';
+  html += '<div style="font-size: 0.75rem; font-weight: 700; color: #666; margin-bottom: 6px; text-transform: uppercase;">Sub-options:</div>';
+  item.subOptions.forEach(opt => {
+    const subKey = `${item.id}_sub_${opt}`;
+    const available = isAvailable(subKey);
+    html += `<div class="sub-option-row">
+      <span class="sub-option-name">${opt}</span>
+      <div style="display: flex; align-items: center;">
+        <label class="toggle-switch" style="width: 44px; height: 22px;">
+          <input type="checkbox" ${available ? 'checked' : ''} onchange="toggleAvailability('${subKey}')">
+          <span class="toggle-slider" style="border-radius: 22px;"></span>
+        </label>
+        <span class="toggle-label ${available ? 'available' : 'unavailable'}" style="font-size: 0.65rem;">${available ? 'ON' : 'OFF'}</span>
+      </div>
+    </div>`;
+  });
+  html += '</div>';
+  return html;
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+function closeSuccess() { closeModal('successModal'); }
+
+// ============ INIT ============
+initSupabaseSync();
+renderCategoryNav();
+</script>
+</body>
+</html>
