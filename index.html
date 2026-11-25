@@ -97,6 +97,7 @@
   .chat-options { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
   .chat-btn { padding: 16px 8px; border: none; border-radius: 4px; color: white; font-weight: 700; cursor: pointer; font-size: 1rem; width: 100%; text-transform: uppercase; font-family: 'Oswald', sans-serif; letter-spacing: 1px; }
   .chat-whatsapp { background: #25D366; }
+  .chat-btn:disabled { background: #999; cursor: not-allowed; }
   .btn-close { background: var(--kfc-light-grey); color: var(--kfc-black); padding: 14px; border: none; border-radius: 4px; width: 100%; margin-top: 16px; cursor: pointer; font-weight: 700; font-size: 1rem; text-transform: uppercase; font-family: 'Oswald', sans-serif; letter-spacing: 1px; }
   .info-note { background: #FFF8E1; border-left: 4px solid var(--kfc-yellow); padding: 12px; border-radius: 4px; font-size: 0.85rem; margin-bottom: 16px; font-weight: 500; color: #555; }
   .chat-link-box { background: var(--kfc-grey); padding: 16px; border-radius: 8px; margin-top: 10px; font-size: 0.9rem; text-align: center; }
@@ -123,6 +124,13 @@
   .loading-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.95); z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: 'Oswald', sans-serif; font-size: 1.2rem; color: var(--kfc-red); }
   .sync-status { position: fixed; top: 8px; left: 50%; transform: translateX(-50%); background: var(--kfc-black); color: white; padding: 6px 14px; border-radius: 20px; font-size: 0.7rem; font-weight: 700; z-index: 300; font-family: 'Oswald', sans-serif; letter-spacing: 1px; opacity: 0; transition: opacity 0.3s; }
   .sync-status.show { opacity: 1; }
+
+  /* Availability check modal styles */
+  .unavailable-list { background: #FFF0F3; border: 2px solid var(--kfc-red); border-radius: 8px; padding: 12px; margin: 12px 0; }
+  .unavailable-item { padding: 6px 0; font-weight: 600; color: var(--kfc-red); border-bottom: 1px dashed #ffcccc; font-size: 0.9rem; }
+  .unavailable-item:last-child { border-bottom: none; }
+  .check-spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid var(--kfc-light-grey); border-top-color: var(--kfc-red); border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 8px; vertical-align: middle; }
+  @keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
@@ -308,10 +316,29 @@
         💬 Magpapadala ka ng payment proof sa WhatsApp. Dito na rin tayo mag-uusap kung kailan ready for pickup.
       </div>
       <div class="chat-options">
-        <button class="chat-btn chat-whatsapp" onclick="submitOrder('whatsapp')">💬 Order via WhatsApp</button>
+        <button class="chat-btn chat-whatsapp" id="whatsappSubmitBtn" onclick="handleWhatsAppSubmit()">💬 Order via WhatsApp</button>
       </div>
     </div>
     <button class="btn-close" onclick="closeModal('checkoutModal')">Bumalik sa Menu</button>
+  </div>
+</div>
+
+<!-- AVAILABILITY CHECK MODAL -->
+<div class="modal" id="availabilityCheckModal">
+  <div class="modal-content">
+    <div style="text-align:center; font-size: 3rem; margin-bottom: 10px;">⚠️</div>
+    <h2>May Items na Hindi Na Available!</h2>
+    <p style="text-align:center; color: #555; font-weight: 600; margin-bottom: 16px;">
+      Habang nag-o-order ka, may mga item na naubos na. Automatic na tinanggal namin ang mga ito sa iyong order.
+    </p>
+    <div class="unavailable-list" id="unavailableList"></div>
+    <div class="info-note" style="margin-top: 16px;">
+      ✅ Ang natitirang items mo ay naka-save pa. Pwede mo nang ipadala ang order via WhatsApp o bumalik sa menu para magdagdag ng iba.
+    </div>
+    <div style="display:flex; gap:10px; margin-top:16px;">
+      <button class="btn-close" onclick="closeModal('availabilityCheckModal')" style="margin-top:0; flex:1;">Bumalik sa Menu</button>
+      <button class="btn-checkout" id="proceedWhatsAppBtn" style="flex:2;">Ipadala ang Natitira</button>
+    </div>
   </div>
 </div>
 
@@ -338,7 +365,6 @@ const CONFIG = {
   supabaseAnonKey: "sb_publishable_jEuGAYo5zxhE4LYk5nmn4A_1JTdeI6X"
 };
 
-// ✅ FIX: Ginamit ang 'supabaseClient' sa halip na 'supabase' para iwas sa conflict sa global variable
 const supabaseClient = window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseAnonKey);
 
 const MENU = {
@@ -353,7 +379,7 @@ const MENU = {
     { id: "longsilog", name: "Longsilog (3pcs)", basePrice: 90, simpleCustom: true },
     { id: "cornsilog", name: "Cornsilog", basePrice: 90, simpleCustom: true },
     { id: "tempurasilog", name: "Tempurasilog (2pcs)", basePrice: 90, simpleCustom: true },
-    { id: "nuggetsilog", name: "Nuggetsilog (5pcs)", basePrice: 90, simpleCustom: true },
+    { id: "nuggetsilog", name: "Nuggetsilog (5pcs)", basePrice: 90, specialCustom: false, simpleCustom: true },
     { id: "shanghaisilog", name: "Shanghaisilog (6pcs)", basePrice: 90, simpleCustom: true },
   ],
   "Mami at Soup": [
@@ -489,6 +515,107 @@ function showSyncStatus() {
 
 function hideLoading() {
   document.getElementById('loadingOverlay').style.display = 'none';
+}
+
+// ============ AVAILABILITY CHECK BEFORE SUBMIT ============
+async function handleWhatsAppSubmit() {
+  const btn = document.getElementById('whatsappSubmitBtn');
+  const name = document.getElementById('customerName').value.trim();
+  
+  if (!name) { alert('Pakilagay ang iyong pangalan!'); return; }
+  if (Object.keys(cart).length === 0) { alert('Wala nang laman ang order mo!'); return; }
+
+  // Disable button at magpakita ng checking state
+  btn.disabled = true;
+  btn.innerHTML = '<span class="check-spinner"></span> Nagche-check ng availability...';
+
+  try {
+    // Fresh fetch ng availability mula sa Supabase
+    const { data: freshData, error } = await supabaseClient.from('menu_availability').select('id, is_available');
+    
+    if (error) {
+      console.error('Availability check error:', error);
+      alert('Hindi makonek sa database. Subukan ulit.');
+      btn.disabled = false;
+      btn.innerHTML = '💬 Order via WhatsApp';
+      return;
+    }
+
+    // Update local availability state
+    const freshAvailability = {};
+    freshData.forEach(row => {
+      freshAvailability[row.id] = row.is_available;
+    });
+
+    // Check each item in cart
+    const unavailableItems = [];
+    const keysToRemove = [];
+
+    for (const [key, item] of Object.entries(cart)) {
+      // Check base item availability
+      const baseId = item.baseId;
+      const isBaseAvailable = freshAvailability[baseId] !== false;
+      
+      // For customized items, check the full key too
+      const isKeyAvailable = freshAvailability[key] !== false;
+      
+      // Check sub-options if any (for flavor/style items)
+      let subOptionAvailable = true;
+      if (key.includes('_sub_')) {
+        const subKey = key.split('_').pop(); // Get last part (e.g., "Fried", "Pork")
+        const subCheckKey = `${baseId}_sub_${subKey}`;
+        subOptionAvailable = freshAvailability[subCheckKey] !== false;
+      }
+
+      if (!isBaseAvailable || !isKeyAvailable || !subOptionAvailable) {
+        unavailableItems.push(`${item.name} × ${item.qty}`);
+        keysToRemove.push(key);
+      }
+    }
+
+    // Remove unavailable items from cart
+    keysToRemove.forEach(key => delete cart[key]);
+    
+    // Update local menuAvailability with fresh data
+    Object.assign(menuAvailability, freshAvailability);
+
+    // Re-enable button
+    btn.disabled = false;
+    btn.innerHTML = '💬 Order via WhatsApp';
+
+    if (unavailableItems.length > 0) {
+      // Show unavailable items modal
+      const listHtml = unavailableItems.map(item => 
+        `<div class="unavailable-item">❌ ${item}</div>`
+      ).join('');
+      document.getElementById('unavailableList').innerHTML = listHtml;
+      document.getElementById('availabilityCheckModal').classList.add('active');
+      
+      // Bind proceed button
+      document.getElementById('proceedWhatsAppBtn').onclick = () => {
+        closeModal('availabilityCheckModal');
+        if (Object.keys(cart).length === 0) {
+          alert('Wala nang laman ang order mo dahil naubos na ang lahat ng item. Pumili ulit ng order.');
+          closeModal('checkoutModal');
+          renderMenu();
+        } else {
+          // Proceed with remaining items
+          submitOrder('whatsapp');
+        }
+      };
+      
+      renderMenu();
+    } else {
+      // All items available, proceed directly
+      submitOrder('whatsapp');
+    }
+
+  } catch (err) {
+    console.error('Check error:', err);
+    alert('May error habang nagche-check. Subukan ulit.');
+    btn.disabled = false;
+    btn.innerHTML = '💬 Order via WhatsApp';
+  }
 }
 
 // ============ UI RENDERING ============
